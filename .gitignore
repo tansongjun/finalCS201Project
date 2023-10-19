@@ -1,0 +1,6 @@
+# Ignore all .clas files
+*.class
+
+# Ignore processed folders
+/Compressed
+/Decompressed
