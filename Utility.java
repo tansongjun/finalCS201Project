@@ -1,6 +1,6 @@
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.PriorityQueue;
 
 class HuffmanNode implements Comparable<HuffmanNode> {
@@ -36,9 +36,9 @@ class OctreeNode {
 
 public class Utility {
 
-    private HashMap<Integer, Integer> frequencyTable = new HashMap<>();
-    private HashMap<Integer, String> huffmanCodes = new HashMap<>();
-    private HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
+    private final HashMap<Integer, Integer> frequencyTable = new HashMap<>();
+    private final HashMap<Integer, String> huffmanCodes = new HashMap<>();
+    private final HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
 
     public OctreeNode buildOctree(int[][][] pixels, int x0, int x1, int y0, int y1, int z0, int z1) {
         // Check if all pixels in this octant are the same (or if max depth is reached)
@@ -47,9 +47,10 @@ public class Utility {
 
         for (int x = x0; x < x1 && allSame; x++) {
             for (int y = y0; y < y1 && allSame; y++) {
-                for (int z = z0; z < z1 && allSame; z++) {
+                for (int z = z0; z < z1; z++) {
                     if (pixels[x][y][z] != firstValue) {
                         allSame = false;
+                        break;
                     }
                 }
             }
@@ -89,17 +90,13 @@ public class Utility {
             return;
         }
 
-        for (OctreeNode child : node.children) {
-            buildFrequencyTable(child);
-        }
+        Arrays.stream(node.children).forEach(this::buildFrequencyTable);
     }
 
     public HuffmanNode buildHuffmanTree() {
         PriorityQueue<HuffmanNode> queue = new PriorityQueue<>();
 
-        for (Map.Entry<Integer, Integer> entry : frequencyTable.entrySet()) {
-            queue.add(new HuffmanNode(entry.getKey(), entry.getValue()));
-        }
+        frequencyTable.forEach((key, value) -> queue.add(new HuffmanNode(key, value)));
 
         while (queue.size() > 1) {
             HuffmanNode left = queue.poll();
@@ -128,9 +125,7 @@ public class Utility {
 
     // New method to build reverse Huffman codes
     public void buildReverseHuffmanCodes() {
-        for (Map.Entry<Integer, String> entry : huffmanCodes.entrySet()) {
-            reverseHuffmanCodes.put(entry.getValue(), entry.getKey());
-        }
+        huffmanCodes.forEach((key, value) -> reverseHuffmanCodes.put(value, key));
     }
 
     public void writeOctree(OctreeNode node, DataOutputStream dos) throws IOException {
