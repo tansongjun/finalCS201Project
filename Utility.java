@@ -36,9 +36,9 @@ class OctreeNode {
 
 public class Utility {
 
-    private HashMap<Integer, Integer> frequencyTable = new HashMap<>();
-    private HashMap<Integer, String> huffmanCodes = new HashMap<>();
-    private HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
+    private final HashMap<Integer, Integer> frequencyTable = new HashMap<>();
+    private final HashMap<Integer, String> huffmanCodes = new HashMap<>();
+    private final HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
 
     public OctreeNode buildOctree(int[][][] pixels, int x0, int x1, int y0, int y1, int z0, int z1) {
         // Check if all pixels in this octant are the same (or if max depth is reached)
