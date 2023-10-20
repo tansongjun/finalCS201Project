@@ -4,8 +4,3 @@
 # Ignore processed folders
 /Compressed
 /Decompressed
-
-# Ignore IntelliJ idea folder & files
-/.idea
-/out
-finalCS201Project.iml
