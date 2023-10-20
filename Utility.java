@@ -47,9 +47,10 @@ public class Utility {
 
         for (int x = x0; x < x1 && allSame; x++) {
             for (int y = y0; y < y1 && allSame; y++) {
-                for (int z = z0; z < z1 && allSame; z++) {
+                for (int z = z0; z < z1; z++) {
                     if (pixels[x][y][z] != firstValue) {
                         allSame = false;
+                        break;
                     }
                 }
             }
