@@ -1,6 +1,6 @@
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.PriorityQueue;
 
 class HuffmanNode implements Comparable<HuffmanNode> {
@@ -89,17 +89,13 @@ public class Utility {
             return;
         }
 
-        for (OctreeNode child : node.children) {
-            buildFrequencyTable(child);
-        }
+        Arrays.stream(node.children).forEach(this::buildFrequencyTable);
     }
 
     public HuffmanNode buildHuffmanTree() {
         PriorityQueue<HuffmanNode> queue = new PriorityQueue<>();
 
-        for (Map.Entry<Integer, Integer> entry : frequencyTable.entrySet()) {
-            queue.add(new HuffmanNode(entry.getKey(), entry.getValue()));
-        }
+        frequencyTable.forEach((key, value) -> queue.add(new HuffmanNode(key, value)));
 
         while (queue.size() > 1) {
             HuffmanNode left = queue.poll();
@@ -128,9 +124,7 @@ public class Utility {
 
     // New method to build reverse Huffman codes
     public void buildReverseHuffmanCodes() {
-        for (Map.Entry<Integer, String> entry : huffmanCodes.entrySet()) {
-            reverseHuffmanCodes.put(entry.getValue(), entry.getKey());
-        }
+        huffmanCodes.forEach((key, value) -> reverseHuffmanCodes.put(value, key));
     }
 
     public void writeOctree(OctreeNode node, DataOutputStream dos) throws IOException {
