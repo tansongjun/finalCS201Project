@@ -4,3 +4,10 @@
 # Ignore processed folders
 /Compressed
 /Decompressed
+/out
+
+# Ignore .iml files
+*.iml
+
+# Ignore .idea files
+*.idea

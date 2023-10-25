@@ -40,14 +40,24 @@ public class Utility {
     private HashMap<Integer, String> huffmanCodes = new HashMap<>();
     private HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
 
-    public OctreeNode buildOctree(int[][][] pixels, int x0, int x1, int y0, int y1, int z0, int z1) {
+    public OctreeNode buildOctree(int[][][] pixels, int x0, int widthLength, int y0, int heightLength, int z0, int pixelLength) {
         // Check if all pixels in this octant are the same (or if max depth is reached)
         int firstValue = pixels[x0][y0][z0];
         boolean allSame = true;
 
-        for (int x = x0; x < x1 && allSame; x++) {
-            for (int y = y0; y < y1 && allSame; y++) {
-                for (int z = z0; z < z1 && allSame; z++) {
+        // Loop through each pixel, check if all pixels in the octant is the same
+        for (int x = x0; x < widthLength; x++) {
+            if (allSame == false) {
+                break;
+            }
+            for (int y = y0; y < heightLength; y++) {
+                if (allSame == false) {
+                    break;
+                }
+                for (int z = z0; z < pixelLength; z++) {
+                    if (allSame == false) {
+                        break;
+                    }
                     if (pixels[x][y][z] != firstValue) {
                         allSame = false;
                     }
@@ -55,22 +65,30 @@ public class Utility {
             }
         }
 
+        // If pixels in octant are same, create leaf node
         if (allSame) {
             return new OctreeNode(firstValue, true);
         }
 
+        // If pixels in octant are not all the same, split into 8 sub octants and recursively build them.
         OctreeNode node = new OctreeNode(0, false);
-        int mx = (x0 + x1) / 2, my = (y0 + y1) / 2, mz = (z0 + z1) / 2;
 
+        // Get the midpoint of each lengths
+        int midPointX = (x0 + widthLength) / 2;
+        int midPointY = (y0 + heightLength) / 2;
+        int midPointZ = (z0 + pixelLength) / 2;
+
+        // Initialize index to 0
         int index = 0;
+
         for (int dx = 0; dx <= 1; dx++) {
             for (int dy = 0; dy <= 1; dy++) {
                 for (int dz = 0; dz <= 1; dz++) {
 
                     node.children[index++] = buildOctree(pixels,
-                            x0 + dx * (mx - x0), x0 + (dx + 1) * (mx - x0),
-                            y0 + dy * (my - y0), y0 + (dy + 1) * (my - y0),
-                            z0 + dz * (mz - z0), z0 + (dz + 1) * (mz - z0));
+                            x0 + dx * (midPointX - x0), x0 + (dx + 1) * (midPointX - x0),
+                            y0 + dy * (midPointY - y0), y0 + (dy + 1) * (midPointY - y0),
+                            z0 + dz * (midPointZ - z0), z0 + (dz + 1) * (midPointZ - z0));
                 }
             }
         }
@@ -78,29 +96,38 @@ public class Utility {
     }
 
     public void buildFrequencyTable(OctreeNode node) {
+
+        // Base Case
         if (node == null) {
             return;
         }
 
+        // Update node's value in frequency table;
         int value = node.value;// centrepoint for Division
         frequencyTable.put(value, frequencyTable.getOrDefault(value, 0) + 1);
 
+        // Second Base Case, to prevent node.children from returning null
         if (node.isLeaf) {
             return;
         }
 
+        // Recursively build frequency table for all children
         for (OctreeNode child : node.children) {
             buildFrequencyTable(child);
         }
     }
 
     public HuffmanNode buildHuffmanTree() {
+
+        // Create min heap to store frequency pairs
         PriorityQueue<HuffmanNode> queue = new PriorityQueue<>();
 
+        // Turn all pairs into huffman nodes and add into heap
         for (Map.Entry<Integer, Integer> entry : frequencyTable.entrySet()) {
             queue.add(new HuffmanNode(entry.getKey(), entry.getValue()));
         }
 
+        // Build huffman tree
         while (queue.size() > 1) {
             HuffmanNode left = queue.poll();
             HuffmanNode right = queue.poll();
@@ -114,14 +141,17 @@ public class Utility {
     }
 
     public void buildHuffmanCodes(HuffmanNode node, String code) {
+        // Base Case
         if (node == null) {
             return;
         }
 
+        // Once leaf node is reached, place into hashmap to store codes
         if (node.left == null && node.right == null) {
             huffmanCodes.put(node.value, code);
         }
 
+        // Get a unique binary code for each leaf node
         buildHuffmanCodes(node.left, code + "0");
         buildHuffmanCodes(node.right, code + "1");
     }
@@ -241,3 +271,12 @@ public class Utility {
         }
     }
 }
+
+//    Compress Execution Time for 10404007.png : 5 milliseconds
+//        Size of the original file for 10404007.png: 502730 bytes
+//        Size of the compressed file for 10404007.png: 582 bytes
+//        Bytes saved from compression of 10404007.png: 502148 bytes
+//        Decompress Execution Time for 10404007.png : 7 milliseconds
+//        Mean Absolute Error of :10404007.png is 0.0
+//        Mean Squared Error of :10404007.png is 0.0
+//        PSNR of :10404007.png is Infinity
