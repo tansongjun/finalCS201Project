@@ -61,6 +61,7 @@ public class UtilityRefractored {
         if (node == null) {
             return;
         }
+        
         int value = node.value;
         frequencyTable.put(value, frequencyTable.getOrDefault(value, 0) + 1);
 
@@ -213,6 +214,7 @@ public class UtilityRefractored {
             int midPointX = (startX + endX) / 2, midPointY = (startY + endY) / 2, midPointZ = (startZ + endZ) / 2;
 
             int index = 0;
+
             for (int axisDivideX = 0; axisDivideX <= 1; axisDivideX++) {
                 for (int axisDivideY = 0; axisDivideY <= 1; axisDivideY++) {
                     for (int axisDivideZ = 0; axisDivideZ <= 1; axisDivideZ++) {
