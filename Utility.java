@@ -1,7 +1,5 @@
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.*;
 
 class HuffmanNode implements Comparable<HuffmanNode> {
     int value;
@@ -35,85 +33,73 @@ class OctreeNode {
 }
 
 public class Utility {
+    // Class attributes
+    private final Map<Integer, Integer> frequencyTable = new HashMap<>();
+    private final Map<Integer, String> huffmanCodes = new HashMap<>();
+    private final Map<String, Integer> reverseHuffmanCodes = new HashMap<>();
 
-    private HashMap<Integer, Integer> frequencyTable = new HashMap<>();
-    private HashMap<Integer, String> huffmanCodes = new HashMap<>();
-    private HashMap<String, Integer> reverseHuffmanCodes = new HashMap<>();
-
-    public OctreeNode buildOctree(int[][][] pixels, int x0, int widthLength, int y0, int heightLength, int z0, int pixelLength) {
-        // Check if all pixels in this octant are the same (or if max depth is reached)
-        int firstValue = pixels[x0][y0][z0];
-        boolean allSame = true;
-
-        // Loop through each pixel, check if all pixels in the octant is the same
-        for (int x = x0; x < widthLength; x++) {
-            if (allSame == false) {
-                break;
-            }
-            for (int y = y0; y < heightLength; y++) {
-                if (allSame == false) {
-                    break;
-                }
-                for (int z = z0; z < pixelLength; z++) {
-                    if (allSame == false) {
-                        break;
-                    }
+    // Helper function to check if all pixels in the octant are the same
+    private boolean areAllPixelsSame(int[][][] pixels, int startX, int widthLength, int startY, int heightLength, int startZ,
+            int pixelLength) {
+        int firstValue = pixels[startX][startY][startZ];
+        for (int x = startX; x < widthLength; x++) {
+            for (int y = startY; y < heightLength; y++) {
+                for (int z = startZ; z < pixelLength; z++) {
                     if (pixels[x][y][z] != firstValue) {
-                        allSame = false;
+                        return false;
                     }
                 }
             }
         }
+        return true;
+    }
 
-        // If pixels in octant are same, create leaf node
-        if (allSame) {
-            return new OctreeNode(firstValue, true);
+    public OctreeNode buildOctree(int[][][] pixels, int startX, int widthLength, int startY, int heightLength, int startZ,
+            int pixelLength) {
+
+        if (areAllPixelsSame(pixels, startX, widthLength, startY, heightLength, startZ, pixelLength)) {
+            return new OctreeNode(pixels[startX][startY][startZ], true);
         }
 
-        // If pixels in octant are not all the same, split into 8 sub octants and recursively build them.
+        // Continue building the Octree for the non-leaf node
+        // If pixels in octant are not all the same, split into 8 sub octants and
+        // recursively build them.
         OctreeNode node = new OctreeNode(0, false);
 
         // Get the midpoint of each lengths
-        int midPointX = (x0 + widthLength) / 2;
-        int midPointY = (y0 + heightLength) / 2;
-        int midPointZ = (z0 + pixelLength) / 2;
+        int midPointX = (startX + widthLength) / 2;
+        int midPointY = (startY + heightLength) / 2;
+        int midPointZ = (startZ + pixelLength) / 2;
 
         // Initialize index to 0
         int index = 0;
 
-        for (int dx = 0; dx <= 1; dx++) {
-            for (int dy = 0; dy <= 1; dy++) {
-                for (int dz = 0; dz <= 1; dz++) {
-
+        for (int axisDivideX = 0; axisDivideX <= 1; axisDivideX++) {
+            for (int axisDivideY = 0; axisDivideY <= 1; axisDivideY++) {
+                for (int axisDivideZ = 0; axisDivideZ <= 1; axisDivideZ++) {
                     node.children[index++] = buildOctree(pixels,
-                            x0 + dx * (midPointX - x0), x0 + (dx + 1) * (midPointX - x0),
-                            y0 + dy * (midPointY - y0), y0 + (dy + 1) * (midPointY - y0),
-                            z0 + dz * (midPointZ - z0), z0 + (dz + 1) * (midPointZ - z0));
+                            startX + axisDivideX * (midPointX - startX), startX + (axisDivideX + 1) * (midPointX - startX),
+                            startY + axisDivideY * (midPointY - startY), startY + (axisDivideY + 1) * (midPointY - startY),
+                            startZ + axisDivideZ * (midPointZ - startZ), startZ + (axisDivideZ + 1) * (midPointZ - startZ));
                 }
             }
         }
         return node;
     }
 
+    // Update Frequency Table for Octree
     public void buildFrequencyTable(OctreeNode node) {
-
-        // Base Case
         if (node == null) {
             return;
         }
-
-        // Update node's value in frequency table;
-        int value = node.value;// centrepoint for Division
+        
+        int value = node.value;
         frequencyTable.put(value, frequencyTable.getOrDefault(value, 0) + 1);
 
-        // Second Base Case, to prevent node.children from returning null
-        if (node.isLeaf) {
-            return;
-        }
-
-        // Recursively build frequency table for all children
-        for (OctreeNode child : node.children) {
-            buildFrequencyTable(child);
+        if (!node.isLeaf) {
+            for (OctreeNode child : node.children) {
+                buildFrequencyTable(child);
+            }
         }
     }
 
@@ -140,6 +126,7 @@ public class Utility {
         return queue.poll();
     }
 
+    // Assign Huffman Codes to the Huffman Tree leaf nodes
     public void buildHuffmanCodes(HuffmanNode node, String code) {
         // Base Case
         if (node == null) {
@@ -171,7 +158,7 @@ public class Utility {
 
         String huffmanCode = huffmanCodes.get(node.value);
 
-        //Writing to DataOutputStream
+        // Writing to DataOutputStream
         dos.writeUTF(huffmanCode);
         dos.writeBoolean(node.isLeaf);
 
@@ -179,7 +166,7 @@ public class Utility {
             return;
         }
 
-        //Recursively do it for all nodes in the octree
+        // Recursively do it for all nodes in the octree
         for (OctreeNode child : node.children) {
             writeOctree(child, dos);
         }
@@ -245,26 +232,27 @@ public class Utility {
         }
     }
 
-    public void decompressOctree(OctreeNode node, int[][][] pixels, int x0, int x1, int y0, int y1, int z0, int z1) {
+    public void decompressOctree(OctreeNode node, int[][][] pixels, int startX, int endX, int startY, int endY, int startZ, int endZ) {
         if (node.isLeaf) {
-            for (int x = x0; x < x1; x++) {
-                for (int y = y0; y < y1; y++) {
-                    for (int z = z0; z < z1; z++) {
+            for (int x = startX; x < endX; x++) {
+                for (int y = startY; y < endY; y++) {
+                    for (int z = startZ; z < endZ; z++) {
                         pixels[x][y][z] = node.value;
                     }
                 }
             }
         } else {
-            int mx = (x0 + x1) / 2, my = (y0 + y1) / 2, mz = (z0 + z1) / 2;
+            int midPointX = (startX + endX) / 2, midPointY = (startY + endY) / 2, midPointZ = (startZ + endZ) / 2;
 
             int index = 0;
-            for (int dx = 0; dx <= 1; dx++) {
-                for (int dy = 0; dy <= 1; dy++) {
-                    for (int dz = 0; dz <= 1; dz++) {
+
+            for (int axisDivideX = 0; axisDivideX <= 1; axisDivideX++) {
+                for (int axisDivideY = 0; axisDivideY <= 1; axisDivideY++) {
+                    for (int axisDivideZ = 0; axisDivideZ <= 1; axisDivideZ++) {
                         decompressOctree(node.children[index++], pixels,
-                                x0 + dx * (mx - x0), x0 + (dx + 1) * (mx - x0),
-                                y0 + dy * (my - y0), y0 + (dy + 1) * (my - y0),
-                                z0 + dz * (mz - z0), z0 + (dz + 1) * (mz - z0));
+                                startX + axisDivideX * (midPointX - startX), startX + (axisDivideX + 1) * (midPointX - startX),
+                                startY + axisDivideY * (midPointY - startY), startY + (axisDivideY + 1) * (midPointY - startY),
+                                startZ + axisDivideZ * (midPointZ - startZ), startZ + (axisDivideZ + 1) * (midPointZ - startZ));
                     }
                 }
             }
@@ -272,11 +260,11 @@ public class Utility {
     }
 }
 
-//    Compress Execution Time for 10404007.png : 5 milliseconds
-//        Size of the original file for 10404007.png: 502730 bytes
-//        Size of the compressed file for 10404007.png: 582 bytes
-//        Bytes saved from compression of 10404007.png: 502148 bytes
-//        Decompress Execution Time for 10404007.png : 7 milliseconds
-//        Mean Absolute Error of :10404007.png is 0.0
-//        Mean Squared Error of :10404007.png is 0.0
-//        PSNR of :10404007.png is Infinity
+// Compress Execution Time for 10404007.png : 5 milliseconds
+// Size of the original file for 10404007.png: 502730 bytes
+// Size of the compressed file for 10404007.png: 582 bytes
+// Bytes saved from compression of 10404007.png: 502148 bytes
+// Decompress Execution Time for 10404007.png : 7 milliseconds
+// Mean Absolute Error of :10404007.png is 0.0
+// Mean Squared Error of :10404007.png is 0.0
+// PSNR of :10404007.png is Infinity
