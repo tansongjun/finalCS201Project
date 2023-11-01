@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -7,6 +8,7 @@ import javax.imageio.ImageIO;
 
 public class App {
     public static void main(String[] args) throws IOException, ClassNotFoundException{
+
         //Create an instance of Utility
         Utility Utility = new Utility();
 
@@ -23,9 +25,11 @@ public class App {
                     String imageName = file.getName();
 
                     //Converting image to pixels
+
                     ImagetoPixelConverter ImagetoPixelConverter = new ImagetoPixelConverter(ImageDirectory + imageName);
 
                     //Converting the image to pixels
+
                     int[][][] pixelData = ImagetoPixelConverter.getPixelData();
                     int width = ImagetoPixelConverter.getWidth();
                     int height = ImagetoPixelConverter.getHeight();
@@ -72,35 +76,39 @@ public class App {
                     long decompressStartTime = System.currentTimeMillis();
 
                     // call decompress function
-                    Utility.Decompress(compressed_file_name);
+                    int [][][] newPixelData = Utility.Decompress(compressed_file_name);
                     
                     //end timer for decompress and record the total time passed
                     long decompressEndTime = System.currentTimeMillis();
                     long decompressExecutionTime = decompressEndTime - decompressStartTime;
-                    System.out.println("Decompress Execution Time for " + imageName + " : " + decompressExecutionTime + " milliseconds");   
+                    System.out.println("Decompress Execution Time for " + imageName + " : " + decompressExecutionTime + " milliseconds");
+                    
 
                     //convert back to image for visualisation
-                    PixeltoImageConverter PixeltoImageConverter = new PixeltoImageConverter(pixelData);
+                    PixeltoImageConverter PixeltoImageConverter = new PixeltoImageConverter(newPixelData);
                     PixeltoImageConverter.saveImage("Decompressed/" + imageName, "png");
 
                     //Get the two bufferedimages for calculations
                     BufferedImage originalimage = ImageIO.read(new File(ImageDirectory + imageName));
                     BufferedImage decompressedimage = ImageIO.read(new File("Decompressed/" + imageName)); 
 
-                    //Assessing compression effects on image quality 
                     //calculate MAE
                     double MAE = MAECalculator.calculateMAE(originalimage, decompressedimage);
                     System.out.println("Mean Absolute Error of :" + imageName + " is " + MAE) ;
+
                     //calculate MSE
                     double MSE = MSECalculator.calculateMSE(originalimage, decompressedimage);
                     System.out.println("Mean Squared Error of :" + imageName + " is " + MSE) ;                  
+
                     //calculate PSNR
                     double PSNR = PSNRCalculator.calculatePSNR(originalimage, decompressedimage);
-                    System.out.println("PSNR of :" + imageName + " is " + PSNR);   
-                    System.out.println("///////////////////////////////////////\n");   
-                    break;
+                    System.out.println("PSNR of :" + imageName + " is " + PSNR);
                 }
             }
         }
+
     }
 }
+
+
+        

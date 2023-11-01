@@ -18,7 +18,7 @@ class HuffmanNode implements Comparable<HuffmanNode> {
     }
 }
 
-class OctreeNode {
+class OctreeNode implements Serializable{
     int value; // Average value of this node (or exact value for leaf nodes)
     OctreeNode[] children; // Eight children for each octant
     boolean isLeaf;
@@ -34,9 +34,9 @@ class OctreeNode {
 
 public class Utility {
     // Class attributes
-    private final Map<Integer, Integer> frequencyTable = new HashMap<>();
-    private final Map<Integer, String> huffmanCodes = new HashMap<>();
-    private final Map<String, Integer> reverseHuffmanCodes = new HashMap<>();
+    private Map<Integer, Integer> frequencyTable;
+    private Map<Integer, String> huffmanCodes;
+    private Map<String, Integer> reverseHuffmanCodes;
 
     // Helper function to check if all pixels in the octant are the same
     private boolean areAllPixelsSame(int[][][] pixels, int startX, int widthLength, int startY, int heightLength, int startZ,
@@ -150,7 +150,7 @@ public class Utility {
         }
     }
 
-    public void writeOctree(OctreeNode node, DataOutputStream dos) throws IOException {
+    public void writeOctree(OctreeNode node, ObjectOutputStream oos) throws IOException {
         // Merging of huffman technique & Octree Optimisations
         if (node == null) {
             return;
@@ -159,8 +159,8 @@ public class Utility {
         String huffmanCode = huffmanCodes.get(node.value);
 
         // Writing to DataOutputStream
-        dos.writeUTF(huffmanCode);
-        dos.writeBoolean(node.isLeaf);
+        oos.writeUTF(huffmanCode);
+        oos.writeBoolean(node.isLeaf);
 
         if (node.isLeaf) {
             return;
@@ -168,22 +168,22 @@ public class Utility {
 
         // Recursively do it for all nodes in the octree
         for (OctreeNode child : node.children) {
-            writeOctree(child, dos);
+            writeOctree(child,oos);
         }
 
     }
 
-    public OctreeNode readOctree(DataInputStream dis) throws IOException {
-        String huffmanCode = dis.readUTF();
+    public OctreeNode readOctree(ObjectInputStream ois) throws IOException {
+        String huffmanCode = ois.readUTF();
         int value = reverseHuffmanCodes.get(huffmanCode); // Modified line
-        boolean isLeaf = dis.readBoolean();
+        boolean isLeaf = ois.readBoolean();
 
         OctreeNode node = new OctreeNode(value, isLeaf);
 
         if (!node.isLeaf) {
             node.children = new OctreeNode[8];
             for (int i = 0; i < 8; i++) {
-                node.children[i] = readOctree(dis);
+                node.children[i] = readOctree(ois);
             }
         }
 
@@ -193,6 +193,7 @@ public class Utility {
     public void Compress(int[][][] pixels, String outputFileName) throws IOException {
         OctreeNode root = buildOctree(pixels, 0, pixels.length, 0, pixels[0].length, 0, pixels[0][0].length);
 
+        frequencyTable = new HashMap<>();
         buildFrequencyTable(root);
 
         // System.out.println("Testing for frequency table start");
@@ -204,32 +205,73 @@ public class Utility {
         // System.out.println("Testing for frequency table end\n\n");
 
         HuffmanNode huffmanRoot = buildHuffmanTree();
+        huffmanCodes = new HashMap<>();
         buildHuffmanCodes(huffmanRoot, "");
+        reverseHuffmanCodes = new HashMap<>();
+        buildReverseHuffmanCodes();
 
-        try (DataOutputStream dos = new DataOutputStream(
-                new BufferedOutputStream(new FileOutputStream(outputFileName)))) {
-            dos.writeInt(pixels.length);
-            dos.writeInt(pixels[0].length);
-            dos.writeInt(pixels[0][0].length);
-            writeOctree(root, dos);
+        try (FileOutputStream fos = new FileOutputStream(outputFileName);
+             BufferedOutputStream bos = new BufferedOutputStream(fos);
+             ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeInt(pixels.length);
+            oos.writeInt(pixels[0].length);
+            oos.writeInt(pixels[0][0].length);
+            oos.writeObject(reverseHuffmanCodes);
+            writeOctree(root, oos);
+            oos.flush();
         }
+
+//        try (DataOutputStream dos = new DataOutputStream(
+//                new BufferedOutputStream(new FileOutputStream(outputFileName)))) {
+//            dos.writeInt(pixels.length);
+//            dos.writeInt(pixels[0].length);
+//            dos.writeInt(pixels[0][0].length);
+//            writeOctree(root, dos);
+//        }
     }
 
     public int[][][] Decompress(String inputFileName) throws IOException {
-        try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(inputFileName)))) {
-            int xLength = dis.readInt();
-            int yLength = dis.readInt();
-            int zLength = dis.readInt();
 
-            buildReverseHuffmanCodes();
+        int xLength;
+        int yLength;
+        int zLength;
+
+        try(FileInputStream fis = new FileInputStream(inputFileName);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+            ObjectInputStream ois = new ObjectInputStream(bis)){
+
+            xLength = ois.readInt();
+            yLength = ois.readInt();
+            zLength = ois.readInt();
 
             int[][][] pixels = new int[xLength][yLength][zLength];
-            OctreeNode root = readOctree(dis);
+
+            reverseHuffmanCodes = (HashMap)ois.readObject();
+
+            OctreeNode root = readOctree(ois);
 
             decompressOctree(root, pixels, 0, xLength, 0, yLength, 0, zLength);
 
             return pixels;
+        } catch (ClassNotFoundException e){
+            System.out.println("Class not found");
+            e.printStackTrace();
+            return null;
         }
+//        try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(inputFileName)))) {
+//            int xLength = dis.readInt();
+//            int yLength = dis.readInt();
+//            int zLength = dis.readInt();
+//
+//            buildReverseHuffmanCodes();
+//
+//            int[][][] pixels = new int[xLength][yLength][zLength];
+//            OctreeNode root = readOctree(dis);
+//
+//            decompressOctree(root, pixels, 0, xLength, 0, yLength, 0, zLength);
+//
+//            return pixels;
+//        }
     }
 
     public void decompressOctree(OctreeNode node, int[][][] pixels, int startX, int endX, int startY, int endY, int startZ, int endZ) {
