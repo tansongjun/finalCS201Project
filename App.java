@@ -8,7 +8,7 @@ import javax.imageio.ImageIO;
 public class App {
     public static void main(String[] args) throws IOException, ClassNotFoundException{
         //Create an instance of Utility
-        UtilityTest Utility = new UtilityTest();
+        Utility Utility = new Utility();
 
         //Define original file directory to loop through
         String ImageDirectory = "Original/";

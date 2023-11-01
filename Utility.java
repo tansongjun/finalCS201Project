@@ -242,17 +242,22 @@ public class Utility {
                 }
             }
         } else {
-            int midPointX = (startX + endX) / 2, midPointY = (startY + endY) / 2, midPointZ = (startZ + endZ) / 2;
+            int midPointX = (startX + endX) / 2;
+            int midPointY = (startY + endY) / 2;
+            int midPointZ = (startZ + endZ) / 2;
 
-            int index = 0;
+            for (int x = 0; x <= 1; x++) {
+                for (int y = 0; y <= 1; y++) {
+                    for (int z = 0; z <= 1; z++) {
+                        int index = x * 4 + y * 2 + z;
+                        int newStartX = x == 0 ? startX : midPointX;
+                        int newEndX = x == 0 ? midPointX : endX;
+                        int newStartY = y == 0 ? startY : midPointY;
+                        int newEndY = y == 0 ? midPointY : endY;
+                        int newStartZ = z == 0 ? startZ : midPointZ;
+                        int newEndZ = z == 0 ? midPointZ : endZ;
 
-            for (int axisDivideX = 0; axisDivideX <= 1; axisDivideX++) {
-                for (int axisDivideY = 0; axisDivideY <= 1; axisDivideY++) {
-                    for (int axisDivideZ = 0; axisDivideZ <= 1; axisDivideZ++) {
-                        decompressOctree(node.children[index++], pixels,
-                                startX + axisDivideX * (midPointX - startX), startX + (axisDivideX + 1) * (midPointX - startX),
-                                startY + axisDivideY * (midPointY - startY), startY + (axisDivideY + 1) * (midPointY - startY),
-                                startZ + axisDivideZ * (midPointZ - startZ), startZ + (axisDivideZ + 1) * (midPointZ - startZ));
+                        decompressOctree(node.children[index], pixels, newStartX, newEndX, newStartY, newEndY, newStartZ, newEndZ);
                     }
                 }
             }
