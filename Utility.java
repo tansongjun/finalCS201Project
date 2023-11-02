@@ -155,6 +155,7 @@ public class Utility {
         if (node == null) {
             return;
         }
+        System.out.println("Compress node value: " + node.value);
 
         String huffmanCode = huffmanCodes.get(node.value);
 
@@ -233,11 +234,14 @@ public class Utility {
     }
 
     public void decompressOctree(OctreeNode node, int[][][] pixels, int startX, int endX, int startY, int endY, int startZ, int endZ) {
+
+        System.out.println("Decompress Node Value" + node.value);
         if (node.isLeaf) {
             for (int x = startX; x < endX; x++) {
                 for (int y = startY; y < endY; y++) {
                     for (int z = startZ; z < endZ; z++) {
                         pixels[x][y][z] = node.value;
+//                        System.out.println();
                     }
                 }
             }
