@@ -1,275 +1,182 @@
 import java.io.*;
-import java.util.*;
+import java.util.zip.GZIPOutputStream;
+import java.util.zip.GZIPInputStream;
 
-class HuffmanNode implements Comparable<HuffmanNode> {
-    int value;
-    int frequency;
-    HuffmanNode left;
-    HuffmanNode right;
+class QuadNode implements Serializable {
+    int x, y, size;
+    int[] color; // [R, G, B]
+    QuadNode nw, ne, sw, se;
 
-    public HuffmanNode(int value, int frequency) {
-        this.value = value;
-        this.frequency = frequency;
-    }
-
-    @Override
-    public int compareTo(HuffmanNode o) {
-        return Integer.compare(this.frequency, o.frequency);
+    public QuadNode(int x, int y, int size, int[] color) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.color = color;
+        this.nw = null;
+        this.ne = null;
+        this.sw = null;
+        this.se = null;
     }
 }
 
-class OctreeNode {
-    int value; // Average value of this node (or exact value for leaf nodes)
-    OctreeNode[] children; // Eight children for each octant
-    boolean isLeaf;
+class QuadTree implements Serializable {
 
-    public OctreeNode(int value, boolean isLeaf) {
-        this.value = value;
-        this.isLeaf = isLeaf;
-        if (!isLeaf) {
-            this.children = new OctreeNode[8];
+    QuadNode root;
+
+    // Constant for color channels
+    private static final int COLOR_CHANNELS = 3;
+
+    // You can tune this threshold
+    public static final double VARIANCE_THRESHOLD = 100;
+
+    public QuadTree(int[][][] image, int x, int y, int size) {
+        this.root = build(image, x, y, size);
+    }
+
+    private QuadNode build(int[][][] image, int x, int y, int size) {
+        if (x >= image.length || y >= image[0].length) {
+            return null; // Boundary case
         }
+
+        int[] avgColor = new int[COLOR_CHANNELS];
+        double variance = calculateVarianceAndAverageColor(image, x, y, size, avgColor);
+
+        QuadNode node = new QuadNode(x, y, size, avgColor);
+
+        if (size > 1 && variance > VARIANCE_THRESHOLD) {
+            int halfSize = size >> 1;
+            node.nw = build(image, x, y, halfSize);
+            node.ne = build(image, x + halfSize, y, halfSize);
+            node.sw = build(image, x, y + halfSize, halfSize);
+            node.se = build(image, x + halfSize, y + halfSize, halfSize);
+        }
+
+        return node;
+    }
+
+    private double calculateVarianceAndAverageColor(int[][][] image, int x, int y, int size, int[] avgColor) {
+        double totalR = 0, totalG = 0, totalB = 0;
+        double varR = 0.0, varG = 0.0, varB = 0.0;
+        int count = 0;
+
+        for (int i = x; i < x + size && i < image.length; i++) {
+            for (int j = y; j < y + size && j < image[0].length; j++) {
+                int r = image[i][j][0];
+                int g = image[i][j][1];
+                int b = image[i][j][2];
+
+                totalR += r;
+                totalG += g;
+                totalB += b;
+
+                count++;
+            }
+        }
+
+        avgColor[0] = (int) Math.round(totalR / count);
+        avgColor[1] = (int) Math.round(totalG / count);
+        avgColor[2] = (int) Math.round(totalB / count);
+
+        for (int i = x; i < x + size && i < image.length; i++) {
+            for (int j = y; j < y + size && j < image[0].length; j++) {
+                varR += Math.pow(image[i][j][0] - avgColor[0], 2);
+                varG += Math.pow(image[i][j][1] - avgColor[1], 2);
+                varB += Math.pow(image[i][j][2] - avgColor[2], 2);
+            }
+        }
+
+        return (varR + varG + varB) / (3 * count);
     }
 }
 
 public class Utility {
-    // Class attributes
-    private final Map<Integer, Integer> frequencyTable = new HashMap<>();
-    private final Map<Integer, String> huffmanCodes = new HashMap<>();
-    private final Map<String, Integer> reverseHuffmanCodes = new HashMap<>();
 
-    // Helper function to check if all pixels in the octant are the same
-    private boolean areAllPixelsSame(int[][][] pixels, int startX, int widthLength, int startY, int heightLength, int startZ,
-            int pixelLength) {
-        int firstValue = pixels[startX][startY][startZ];
-        for (int x = startX; x < widthLength; x++) {
-            for (int y = startY; y < heightLength; y++) {
-                for (int z = startZ; z < pixelLength; z++) {
-                    if (pixels[x][y][z] != firstValue) {
-                        return false;
+    private static final int COLOR_CHANNELS = 3; // Constant for color channels
+
+    public int[][][] gaussianBlur(int[][][] image) {
+        int[][][] result = new int[image.length][image[0].length][3];
+
+        // Define a 3x3 Gaussian kernel (this is a simple one; in practice, you might
+        // want a larger kernel)
+        double[][] kernel = {
+                { 1 / 16.0, 2 / 16.0, 1 / 16.0 },
+                { 2 / 16.0, 4 / 16.0, 2 / 16.0 },
+                { 1 / 16.0, 2 / 16.0, 1 / 16.0 }
+        };
+
+        for (int x = 1; x < image.length - 1; x++) {
+            for (int y = 1; y < image[0].length - 1; y++) {
+                for (int c = 0; c < 3; c++) { // for each color channel
+                    double sum = 0.0;
+                    for (int i = -1; i <= 1; i++) {
+                        for (int j = -1; j <= 1; j++) {
+                            sum += image[x + i][y + j][c] * kernel[i + 1][j + 1];
+                        }
                     }
+                    result[x][y][c] = (int) sum;
                 }
             }
         }
-        return true;
-    }
 
-    public OctreeNode buildOctree(int[][][] pixels, int startX, int widthLength, int startY, int heightLength, int startZ,
-            int pixelLength) {
-
-        if (areAllPixelsSame(pixels, startX, widthLength, startY, heightLength, startZ, pixelLength)) {
-            return new OctreeNode(pixels[startX][startY][startZ], true);
-        }
-
-        // Continue building the Octree for the non-leaf node
-        // If pixels in octant are not all the same, split into 8 sub octants and
-        // recursively build them.
-        OctreeNode node = new OctreeNode(0, false);
-
-        // Get the midpoint of each lengths
-        int midPointX = (startX + widthLength) / 2;
-        int midPointY = (startY + heightLength) / 2;
-        int midPointZ = (startZ + pixelLength) / 2;
-
-        // Initialize index to 0
-        int index = 0;
-
-        for (int axisDivideX = 0; axisDivideX <= 1; axisDivideX++) {
-            for (int axisDivideY = 0; axisDivideY <= 1; axisDivideY++) {
-                for (int axisDivideZ = 0; axisDivideZ <= 1; axisDivideZ++) {
-                    node.children[index++] = buildOctree(pixels,
-                            startX + axisDivideX * (midPointX - startX), startX + (axisDivideX + 1) * (midPointX - startX),
-                            startY + axisDivideY * (midPointY - startY), startY + (axisDivideY + 1) * (midPointY - startY),
-                            startZ + axisDivideZ * (midPointZ - startZ), startZ + (axisDivideZ + 1) * (midPointZ - startZ));
-                }
-            }
-        }
-        return node;
-    }
-
-    // Update Frequency Table for Octree
-    public void buildFrequencyTable(OctreeNode node) {
-        if (node == null) {
-            return;
-        }
-        
-        int value = node.value;
-        frequencyTable.put(value, frequencyTable.getOrDefault(value, 0) + 1);
-
-        if (!node.isLeaf) {
-            for (OctreeNode child : node.children) {
-                buildFrequencyTable(child);
-            }
-        }
-    }
-
-    public HuffmanNode buildHuffmanTree() {
-
-        // Create min heap to store frequency pairs
-        PriorityQueue<HuffmanNode> queue = new PriorityQueue<>();
-
-        // Turn all pairs into huffman nodes and add into heap
-        for (Map.Entry<Integer, Integer> entry : frequencyTable.entrySet()) {
-            queue.add(new HuffmanNode(entry.getKey(), entry.getValue()));
-        }
-
-        // Build huffman tree
-        while (queue.size() > 1) {
-            HuffmanNode left = queue.poll();
-            HuffmanNode right = queue.poll();
-            HuffmanNode parent = new HuffmanNode(-1, left.frequency + right.frequency);
-            parent.left = left;
-            parent.right = right;
-            queue.add(parent);
-        }
-
-        return queue.poll();
-    }
-
-    // Assign Huffman Codes to the Huffman Tree leaf nodes
-    public void buildHuffmanCodes(HuffmanNode node, String code) {
-        // Base Case
-        if (node == null) {
-            return;
-        }
-
-        // Once leaf node is reached, place into hashmap to store codes
-        if (node.left == null && node.right == null) {
-            huffmanCodes.put(node.value, code);
-        }
-
-        // Get a unique binary code for each leaf node
-        buildHuffmanCodes(node.left, code + "0");
-        buildHuffmanCodes(node.right, code + "1");
-    }
-
-    // New method to build reverse Huffman codes
-    public void buildReverseHuffmanCodes() {
-        for (Map.Entry<Integer, String> entry : huffmanCodes.entrySet()) {
-            reverseHuffmanCodes.put(entry.getValue(), entry.getKey());
-        }
-    }
-
-    public void writeOctree(OctreeNode node, DataOutputStream dos) throws IOException {
-        // Merging of huffman technique & Octree Optimisations
-        if (node == null) {
-            return;
-        }
-
-        String huffmanCode = huffmanCodes.get(node.value);
-
-        // Writing to DataOutputStream
-        dos.writeUTF(huffmanCode);
-        dos.writeBoolean(node.isLeaf);
-
-        if (node.isLeaf) {
-            return;
-        }
-
-        // Recursively do it for all nodes in the octree
-        for (OctreeNode child : node.children) {
-            writeOctree(child, dos);
-        }
-
-    }
-
-    public OctreeNode readOctree(DataInputStream dis) throws IOException {
-        String huffmanCode = dis.readUTF();
-        int value = reverseHuffmanCodes.get(huffmanCode); // Modified line
-        boolean isLeaf = dis.readBoolean();
-
-        OctreeNode node = new OctreeNode(value, isLeaf);
-
-        if (!node.isLeaf) {
-            node.children = new OctreeNode[8];
-            for (int i = 0; i < 8; i++) {
-                node.children[i] = readOctree(dis);
-            }
-        }
-
-        return node;
+        return result;
     }
 
     public void Compress(int[][][] pixels, String outputFileName) throws IOException {
-        OctreeNode root = buildOctree(pixels, 0, pixels.length, 0, pixels[0].length, 0, pixels[0][0].length);
+        int[][][] processedPixels = gaussianBlur(pixels);
+        QuadTree quadTree = new QuadTree(processedPixels, 0, 0, processedPixels.length);
 
-        buildFrequencyTable(root);
-
-        // System.out.println("Testing for frequency table start");
-        // for (Map.Entry<Integer, Integer> entry : frequencyTable.entrySet()) {
-        // Integer key = entry.getKey();
-        // Integer value = entry.getValue();
-        // System.out.println("Key: " + key + ", Value: " + value);
-        // }
-        // System.out.println("Testing for frequency table end\n\n");
-
-        HuffmanNode huffmanRoot = buildHuffmanTree();
-        buildHuffmanCodes(huffmanRoot, "");
-
-        try (DataOutputStream dos = new DataOutputStream(
-                new BufferedOutputStream(new FileOutputStream(outputFileName)))) {
-            dos.writeInt(pixels.length);
-            dos.writeInt(pixels[0].length);
-            dos.writeInt(pixels[0][0].length);
-            writeOctree(root, dos);
+        // Using GZIPOutputStream for post-compression
+        try (ObjectOutputStream oos = new ObjectOutputStream(
+                new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(outputFileName))))) {
+            oos.writeInt(pixels.length);
+            oos.writeInt(pixels[0].length);
+            oos.writeObject(quadTree);
         }
     }
 
-    public int[][][] Decompress(String inputFileName) throws IOException {
-        try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(inputFileName)))) {
-            int xLength = dis.readInt();
-            int yLength = dis.readInt();
-            int zLength = dis.readInt();
+    public int[][][] Decompress(String inputFileName) throws IOException, ClassNotFoundException {
+        int sizeX, sizeY;
+        QuadTree quadTree;
 
-            buildReverseHuffmanCodes();
-
-            int[][][] pixels = new int[xLength][yLength][zLength];
-            OctreeNode root = readOctree(dis);
-
-            decompressOctree(root, pixels, 0, xLength, 0, yLength, 0, zLength);
-
-            return pixels;
+        // Using GZIPInputStream for decompression
+        try (ObjectInputStream ois = new ObjectInputStream(
+                new GZIPInputStream(new BufferedInputStream(new FileInputStream(inputFileName))))) {
+            sizeY = ois.readInt();
+            sizeX = ois.readInt();
+            Object object = ois.readObject();
+            if (object instanceof QuadTree) {
+                quadTree = (QuadTree) object;
+            } else {
+                throw new IOException("Invalid object type in the input file");
+            }
         }
+
+        int[][][] pixels = new int[sizeY][sizeX][COLOR_CHANNELS];
+        reconstructImage(quadTree.root, pixels);
+
+        return pixels;
     }
 
-    public void decompressOctree(OctreeNode node, int[][][] pixels, int startX, int endX, int startY, int endY, int startZ, int endZ) {
-        if (node.isLeaf) {
-            for (int x = startX; x < endX; x++) {
-                for (int y = startY; y < endY; y++) {
-                    for (int z = startZ; z < endZ; z++) {
-                        pixels[x][y][z] = node.value;
-                    }
-                }
-            }
-        } else {
-            int midPointX = (startX + endX) / 2;
-            int midPointY = (startY + endY) / 2;
-            int midPointZ = (startZ + endZ) / 2;
-
-            for (int x = 0; x <= 1; x++) {
-                for (int y = 0; y <= 1; y++) {
-                    for (int z = 0; z <= 1; z++) {
-                        int index = x * 4 + y * 2 + z;
-                        int newStartX = x == 0 ? startX : midPointX;
-                        int newEndX = x == 0 ? midPointX : endX;
-                        int newStartY = y == 0 ? startY : midPointY;
-                        int newEndY = y == 0 ? midPointY : endY;
-                        int newStartZ = z == 0 ? startZ : midPointZ;
-                        int newEndZ = z == 0 ? midPointZ : endZ;
-
-                        decompressOctree(node.children[index], pixels, newStartX, newEndX, newStartY, newEndY, newStartZ, newEndZ);
-                    }
-                }
-            }
+    private void reconstructImage(QuadNode node, int[][][] pixels) {
+        if (node == null) {
+            return;
         }
+
+        if (node.nw == null && node.ne == null && node.sw == null && node.se == null) {
+            // This is a leaf node, fill the pixels
+            for (int i = node.x; i < node.x + node.size; i++) {
+                for (int j = node.y; j < node.y + node.size; j++) {
+                    pixels[i][j][0] = node.color[0];
+                    pixels[i][j][1] = node.color[1];
+                    pixels[i][j][2] = node.color[2];
+                }
+            }
+            return;
+        }
+
+        reconstructImage(node.nw, pixels);
+        reconstructImage(node.ne, pixels);
+        reconstructImage(node.sw, pixels);
+        reconstructImage(node.se, pixels);
     }
 }
-
-// Compress Execution Time for 10404007.png : 5 milliseconds
-// Size of the original file for 10404007.png: 502730 bytes
-// Size of the compressed file for 10404007.png: 582 bytes
-// Bytes saved from compression of 10404007.png: 502148 bytes
-// Decompress Execution Time for 10404007.png : 7 milliseconds
-// Mean Absolute Error of :10404007.png is 0.0
-// Mean Squared Error of :10404007.png is 0.0
-// PSNR of :10404007.png is Infinity
