@@ -22,19 +22,19 @@ class HuffmanNode implements Comparable<HuffmanNode> {
     }
 }
 
-class QuadTreeNode{
+class QuadTreeNode implements Serializable{
 
-    Rectangle rect;
+    Rectangle rect;// x,y,widthLength,heightLength
     int colour;
     QuadTreeNode[] children; // Four children for each octant
     boolean isLeaf;
 
     public QuadTreeNode(Rectangle rect,int colour, boolean isLeaf) {
-        this.rect = rect;
+//        this.rect = rect;
         this.colour = colour;
         this.isLeaf = isLeaf;
         if (!isLeaf) {
-            this.children = new QuadTreeNode[8];
+            this.children = new QuadTreeNode[4];
         }
     }
 
@@ -97,11 +97,23 @@ public class Utility {
     }
 
     // Helper function to check if all pixels in the octant are the same
-    private boolean areAllPixelsSame(int[][] pixels, int startX, int widthLength, int startY, int heightLength) {
-        int firstValue = pixels[startX][startY];
-        for(int x = startX; x < widthLength; x++){
-            for(int y = startY; y >= 0; y--){
-                if (pixels[x][y] != firstValue) {
+//    private boolean areAllPixelsSame(int[][] pixels, int startX, int widthLength, int startY, int heightLength) {
+//        int firstValue = pixels[startX][startY];
+//        for(int x = startX; x < startX + widthLength; x++){
+//            for(int y = startY; y >= 0; y--){
+//                if (pixels[x][y] != firstValue) {
+//                    return false;
+//                }
+//            }
+//        }
+//        return true;
+//    }
+
+    public boolean areAllPixelsSame(int[][] pixels,int sX,int widthLength,int sY,int heightLength){
+        int firstValue = pixels[sX][sY];
+        for (int i = sX; i < widthLength; i++) {
+            for (int j = sY - 1; j >= sY - heightLength; j--) {
+                if(firstValue != pixels[i][j]){
                     return false;
                 }
             }
@@ -112,7 +124,7 @@ public class Utility {
 
     public QuadTreeNode buildQuadTree(int[][] pixels,int startX, int widthLength, int startY, int heightLength){
 
-        if(areAllPixelsSame(pixels,startX,widthLength,startY,heightLength-1)){
+        if(areAllPixelsSame(pixels,startX,widthLength,startY,heightLength)){
             return new QuadTreeNode(new Rectangle(startX,startY,widthLength,heightLength),pixels[startX][startY],true);
         }
 
@@ -222,7 +234,7 @@ public class Utility {
 
         if (!node.isLeaf) {
             node.children = new QuadTreeNode[4];
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 4; i++) {
                 node.children[i] = readQuadTree(ois);
             }
         }
@@ -236,7 +248,7 @@ public class Utility {
 
         //my code
         int[][] myPixels = make2DPixelArray(pixels);
-        QuadTreeNode root = buildQuadTree(myPixels, 0, pixels.length, 0, pixels[0].length);
+        QuadTreeNode root = buildQuadTree(myPixels, 0, pixels.length, pixels[0].length-1, pixels[0].length);
 
         frequencyTable = new HashMap<>();
         buildFrequencyTable(root);
@@ -307,49 +319,47 @@ public class Utility {
     }
 
     public void decompressQuadTree(QuadTreeNode node, int[][] pixels, int startX, int endX, int startY, int endY) {
-//        if (node.isLeaf) {
-//            for (int x = startX; x < endX; x++) {
-//                for (int y = startY; y < endY; y++) {
-//                    for (int z = startZ; z < endZ; z++) {
-//                        pixels[x][y][z] = node.value;
-//                    }
-//                }
-//            }
-//        } else {
-//            int midPointX = (startX + endX) / 2;
-//            int midPointY = (startY + endY) / 2;
-//            int midPointZ = (startZ + endZ) / 2;
-//
-//            for (int x = 0; x <= 1; x++) {
-//                for (int y = 0; y <= 1; y++) {
-//                    for (int z = 0; z <= 1; z++) {
-//                        int index = x * 4 + y * 2 + z;
-//                        int newStartX = x == 0 ? startX : midPointX;
-//                        int newEndX = x == 0 ? midPointX : endX;
-//                        int newStartY = y == 0 ? startY : midPointY;
-//                        int newEndY = y == 0 ? midPointY : endY;
-//                        int newStartZ = z == 0 ? startZ : midPointZ;
-//                        int newEndZ = z == 0 ? midPointZ : endZ;
-//
-//                        decompressOctree(node.children[index], pixels, newStartX, newEndX, newStartY, newEndY, newStartZ, newEndZ);
-//                    }
-//                }
-//            }
-//        }
-        if(node.isLeaf){
-            for(int x = startX; x < endX; x++){
-                for(int y = startY; y > endY; y--){
+        if (node.isLeaf) {
+            for (int x = startX; x < endX; x++) {
+                for (int y = startY; y < endY; y++) {
                     pixels[x][y] = node.colour;
                 }
             }
         } else {
-            QuadTreeNode[] children = node.getChildren();
+            int midPointX = (startX + endX) / 2;
+            int midPointY = (startY + endY) / 2;
+//            int midPointZ = (startZ + endZ) / 2;
 
-            decompressQuadTree(children[0],pixels, (int) children[0].getRect().getX(), (int) (children[0].getRect().getX() + children[0].getRect().getWidth()), (int) children[0].getRect().getY(), (int) children[0].getRect().getHeight());
-            decompressQuadTree(children[1],pixels, (int) children[1].getRect().getX(), (int) (children[1].getRect().getX() + children[1].getRect().getWidth()), (int) children[1].getRect().getY(), (int) children[1].getRect().getHeight());
-            decompressQuadTree(children[2],pixels, (int) children[2].getRect().getX(), (int) (children[2].getRect().getX() + children[2].getRect().getWidth()), (int) children[2].getRect().getY(), (int) children[2].getRect().getHeight());
-            decompressQuadTree(children[3],pixels, (int) children[3].getRect().getX(), (int) (children[3].getRect().getX() + children[3].getRect().getWidth()), (int) children[3].getRect().getY(), (int) children[3].getRect().getHeight());
+            for (int x = 0; x <= 1; x++) {
+                for (int y = 0; y <= 1; y++) {
+                    for (int z = 0; z <= 1; z++) {
+                        int index = x * 4 + y * 2 + z;
+                        int newStartX = x == 0 ? startX : midPointX;
+                        int newEndX = x == 0 ? midPointX : endX;
+                        int newStartY = y == 0 ? startY : midPointY;
+                        int newEndY = y == 0 ? midPointY : endY;
+//                        int newStartZ = z == 0 ? startZ : midPointZ;
+//                        int newEndZ = z == 0 ? midPointZ : endZ;
+
+                        decompressQuadTree(node.children[index], pixels, newStartX, newEndX, newStartY, newEndY);
+                    }
+                }
+            }
         }
+//        if(node.isLeaf){
+//            for(int x = startX; x < endX; x++){
+//                for(int y = startY; y > endY; y--){
+//                    pixels[x][y] = node.colour;
+//                }
+//            }
+//        } else {
+//            QuadTreeNode[] children = node.getChildren();
+//
+//            decompressQuadTree(children[0],pixels, (int) children[0].getRect().getX(), (int) (children[0].getRect().getX() + children[0].getRect().getWidth()), (int) children[0].getRect().getY(), (int) children[0].getRect().getHeight());
+//            decompressQuadTree(children[1],pixels, (int) children[1].getRect().getX(), (int) (children[1].getRect().getX() + children[1].getRect().getWidth()), (int) children[1].getRect().getY(), (int) children[1].getRect().getHeight());
+//            decompressQuadTree(children[2],pixels, (int) children[2].getRect().getX(), (int) (children[2].getRect().getX() + children[2].getRect().getWidth()), (int) children[2].getRect().getY(), (int) children[2].getRect().getHeight());
+//            decompressQuadTree(children[3],pixels, (int) children[3].getRect().getX(), (int) (children[3].getRect().getX() + children[3].getRect().getWidth()), (int) children[3].getRect().getY(), (int) children[3].getRect().getHeight());
+//        }
     }
 
 }
