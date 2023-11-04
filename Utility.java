@@ -1,4 +1,5 @@
 import java.io.*;
+import java.util.Arrays;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.GZIPInputStream;
 
@@ -21,13 +22,11 @@ class QuadNode implements Serializable {
 
 class QuadTree implements Serializable {
 
-    QuadNode root;
-
+    // You can tune this threshold
+    public static final double VARIANCE_THRESHOLD = 10;
     // Constant for color channels
     private static final int COLOR_CHANNELS = 3;
-
-    // You can tune this threshold
-    public static final double VARIANCE_THRESHOLD = 100;
+    QuadNode root;
 
     public QuadTree(int[][][] image, int x, int y, int size) {
         this.root = build(image, x, y, size);
@@ -165,7 +164,34 @@ public class Utility {
         int[][][] pixels = new int[sizeY][sizeX][COLOR_CHANNELS];
         reconstructImage(quadTree.root, pixels);
 
+        for (int y = 0; y < pixels.length; y++) {
+            for (int x = 0; x < pixels[y].length; x++) {
+                // Handling black pixels
+                if (Arrays.equals(pixels[y][x], new int[]{0, 0, 0})) {
+                    pixels[y][x] = handleBlackPixels(pixels, x, y);
+                }
+            }
+        }
+
         return pixels;
+    }
+
+    private int[] handleBlackPixels(int[][][] pixels, int x, int y) {
+//        System.out.println("X value=" + x + ", Y value=" + y + ", pixels.length=" + pixels.length + ", pixels[" + y + "].length=" + pixels[y].length);
+
+        int yStart = y < 5 ? 4 : y > pixels.length - 6 ? y - 6 : y - 2;
+        int xStart = x < 5 ? 4 : x > pixels[y].length - 6 ? x - 6 : x - 2;
+
+
+        for (int i = yStart; i < yStart + 5; i++) {
+            for (int j = xStart; j < xStart + 5; j++) {
+                if (!Arrays.equals(pixels[i][j], new int[]{0, 0, 0})) {
+                    return pixels[i][j];
+                }
+            }
+        }
+
+        return pixels[y][x];
     }
 
     private void reconstructImage(QuadNode node, int[][][] pixels) {
