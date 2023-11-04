@@ -177,9 +177,6 @@ public class Utility {
     }
 
     private int[] handleBlackPixels(int[][][] pixels, int x, int y) {
-//        System.out.println("X value=" + x + ", Y value=" + y + ", pixels.length=" + pixels.length + ", pixels[" + y
-//        + "].length=" + pixels[y].length);
-
         int yStart = y < 5 ? 4 : y > pixels.length - 6 ? y - 6 : y - 2;
         int xStart = x < 5 ? 4 : x > pixels[y].length - 6 ? x - 6 : x - 2;
 
