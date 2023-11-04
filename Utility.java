@@ -99,18 +99,28 @@ public class Utility {
         // Define a 3x3 Gaussian kernel (this is a simple one; in practice, you might
         // want a larger kernel)
         double[][] kernel = {
-                { 1 / 16.0, 2 / 16.0, 1 / 16.0 },
-                { 2 / 16.0, 4 / 16.0, 2 / 16.0 },
-                { 1 / 16.0, 2 / 16.0, 1 / 16.0 }
+                {1, 4, 7, 4, 1},
+                {4, 16, 26, 16, 4},
+                {7, 26, 41, 26, 7},
+                {4, 16, 26, 16, 4},
+                {1, 4, 7, 4, 1}
         };
+// Normalize the kernel by dividing each value by the sum of all values
+        double kernelSum = 273; // Sum of all values in the kernel
+        for (int i = 0; i < kernel.length; i++) {
+            for (int j = 0; j < kernel[i].length; j++) {
+                kernel[i][j] /= kernelSum;
+            }
+        }
 
-        for (int x = 1; x < image.length - 1; x++) {
-            for (int y = 1; y < image[0].length - 1; y++) {
+
+        for (int x = 2; x < image.length - 2; x++) {
+            for (int y = 2; y < image[0].length - 2; y++) {
                 for (int c = 0; c < 3; c++) { // for each color channel
                     double sum = 0.0;
-                    for (int i = -1; i <= 1; i++) {
-                        for (int j = -1; j <= 1; j++) {
-                            sum += image[x + i][y + j][c] * kernel[i + 1][j + 1];
+                    for (int i = -2; i <= 2; i++) {
+                        for (int j = -2; j <= 2; j++) {
+                            sum += image[x + i][y + j][c] * kernel[i + 2][j + 2];
                         }
                     }
                     result[x][y][c] = (int) sum;
@@ -122,6 +132,7 @@ public class Utility {
     }
 
     public void Compress(int[][][] pixels, String outputFileName) throws IOException {
+//        int[][][] processedPixels = pixels;
         int[][][] processedPixels = gaussianBlur(pixels);
         QuadTree quadTree = new QuadTree(processedPixels, 0, 0, processedPixels.length);
 
