@@ -23,7 +23,7 @@ class QuadNode implements Serializable {
 class QuadTree implements Serializable {
 
     // You can tune this threshold
-    public static final double VARIANCE_THRESHOLD = 10;
+    public static final double VARIANCE_THRESHOLD = 150;
     // Constant for color channels
     private static final int COLOR_CHANNELS = 3;
     QuadNode root;
@@ -177,21 +177,29 @@ public class Utility {
     }
 
     private int[] handleBlackPixels(int[][][] pixels, int x, int y) {
-//        System.out.println("X value=" + x + ", Y value=" + y + ", pixels.length=" + pixels.length + ", pixels[" + y + "].length=" + pixels[y].length);
+//        System.out.println("X value=" + x + ", Y value=" + y + ", pixels.length=" + pixels.length + ", pixels[" + y
+//        + "].length=" + pixels[y].length);
 
         int yStart = y < 5 ? 4 : y > pixels.length - 6 ? y - 6 : y - 2;
         int xStart = x < 5 ? 4 : x > pixels[y].length - 6 ? x - 6 : x - 2;
 
+        int[] totalRGB = {0, 0, 0};
+        int count = 0;
 
         for (int i = yStart; i < yStart + 5; i++) {
             for (int j = xStart; j < xStart + 5; j++) {
                 if (!Arrays.equals(pixels[i][j], new int[]{0, 0, 0})) {
-                    return pixels[i][j];
+                    int[] currentRGB = pixels[i][j];
+                    count++;
+                    totalRGB[0] += currentRGB[0];
+                    totalRGB[1] += currentRGB[1];
+                    totalRGB[2] += currentRGB[2];
                 }
             }
         }
 
-        return pixels[y][x];
+        count = count > 0 ? count : 1;
+        return new int[]{totalRGB[0] / count, totalRGB[1] / count, totalRGB[2] / count};
     }
 
     private void reconstructImage(QuadNode node, int[][][] pixels) {
